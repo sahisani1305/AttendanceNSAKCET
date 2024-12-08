@@ -1,0 +1,125 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Home</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #eaf2e3; /* Light green background */
+            color: #013220; /* Dark green text */
+        }
+        .container {
+            border: 2px solid #013220; /* Dark green border */
+            padding: 20px;
+            margin-top: 20px;
+            background-color: #ffffff; /* White background */
+        }
+        h1, h2, h3 {
+            color: #013220; /* Dark green text */
+            text-align: center;
+        }
+        a {
+            color: #013220; /* Dark green text */
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        table {
+            width: 100%;
+            max-width: 800px;
+            margin: 20px auto;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #013220; /* Dark green border */
+            text-align: left;
+        }
+        th {
+            background-color: #a9ba9d; /* Light olive green background for table headers */
+            color: #013220; /* Dark green text for table headers */
+        }
+        td {
+            background-color: #eaf2e3; /* Light green background for table cells */
+        }
+    </style>
+    <script>
+        function submitForm() {
+            // Get selected values
+            var startDate = document.getElementById('start_date').value;
+            var endDate = document.getElementById('end_date').value;
+
+            // Check if all fields are selected
+            if (!startDate) {
+                alert("Start date is required.");
+                return;
+            }
+            if (!endDate) {
+                alert("End date is required.");
+                return;
+            }
+
+            // Construct the URL dynamically
+            var url = `/student_home/?start_date=${startDate}&end_date=${endDate}`;
+
+            // Redirect to the URL
+            window.location.href = url;
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome, {{ request.user.first_name }} {{ request.user.last_name }}</h1>
+        <a href="{% url 'logout' %}">Logout</a>
+        <h2>Your Attendance Records</h2>
+
+        <!-- Date Range Selection Form -->
+        <form id="dateRangeForm" method="get" onsubmit="event.preventDefault(); submitForm();">
+            <table>
+                <tr>
+                    <td><label for="start_date">Start Date:</label></td>
+                    <td><input type="date" id="start_date" name="start_date" required></td>
+                </tr>
+                <tr>
+                    <td><label for="end_date">End Date:</label></td>
+                    <td><input type="date" id="end_date" name="end_date" required></td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="text-align: center;">
+                        <button type="submit">Submit</button>
+                    </td>
+                </tr>
+            </table>
+        </form>
+
+        {% for subject, records in grouped_records.items %}
+            <h3>{{ subject }}</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Serial No.</th>
+                        <th>Date</th>
+                        <th>Period</th>
+                        <th>Status</th>
+                        <th>Teaching Faculty</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in records %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ record.date }}</td>
+                            <td>{{ record.period }}</td>
+                            <td>{{ record.status }}</td>
+                            <td>{{ record.staff_name }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endfor %}
+    </div>
+</body>
+</html>

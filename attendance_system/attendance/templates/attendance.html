@@ -1,0 +1,103 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mark Attendance</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <style>
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #013220;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0a472a;
+        }
+    </style>
+    <script>
+        // Function to toggle select all checkboxes
+        function toggleSelectAll(source) {
+            checkboxes = document.getElementsByName('present');
+            for (var i = 0, n = checkboxes.length; i < n; i++) {
+                checkboxes[i].checked = source.checked;
+            }
+        }
+
+        // Function to collect absent students when the form is submitted
+        function collectAbsents() {
+            let absentRollNumbers = [];
+            let checkboxes = document.getElementsByName('present');
+            
+            // Collect roll numbers of absent students (those not selected)
+            for (let i = 0, n = checkboxes.length; i < n; i++) {
+                if (!checkboxes[i].checked) {
+                    absentRollNumbers.push(checkboxes[i].value);
+                }
+            }
+
+            // Add the absent roll numbers to the hidden input for absent students
+            document.getElementById('absent_students').value = absentRollNumbers.join(',');
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center">Mark Attendance for {{ class_name }} - {{ periods|join:", " }} on {{ date }}</h1>
+        
+        {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}
+                    <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+        
+        <form method="post" action="{% url 'mark_attendance' %}" onsubmit="collectAbsents()">
+            {% csrf_token %}
+            <input type="hidden" name="class" value="{{ class_name }}">
+            <input type="hidden" name="section" value="{{ section }}">
+            {% for period in periods %}
+                <input type="hidden" name="periods" value="{{ period }}">
+            {% endfor %}
+            <input type="hidden" name="date" value="{{ date }}">
+            <input type="hidden" name="semester" value="{{ semester }}">
+            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="subject" value="{{ subject }}">
+
+            <label><input type="checkbox" onclick="toggleSelectAll(this)"> Select All</label><br>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Serial No.</th>
+                        <th>Select</th>
+                        <th>Roll Number</th>
+                        <th>Name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td><input type="checkbox" name="present" value="{{ student.roll_number }}"></td>
+                        <td>{{ student.roll_number }}</td>
+                        <td>{{ student.name }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tr>
+                    <td colspan="4" style="text-align: center;">
+                        <button type="submit">Submit</button>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Hidden field to store absent students -->
+            <input type="hidden" id="absent_students" name="absent_students">
+        </form>
+    </div>
+</body>
+</html>

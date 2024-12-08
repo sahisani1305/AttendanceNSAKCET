@@ -1,0 +1,56 @@
+body {
+    background-color: #eaf2e3; /* Light green background */
+    color: #013220; /* Dark green text */
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    border: 2px solid #013220; /* Dark green border */
+    padding: 20px;
+    margin-top: 20px;
+    background-color: #ffffff; /* White background */
+}
+
+h1 {
+    color: #013220; /* Dark green text */
+    text-align: center;
+}
+
+a {
+    color: #013220; /* Dark green text */
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.list-group-item {
+    border: 1px solid #013220; /* Dark green border for list items */
+    margin-bottom: 10px;
+}
+
+/* Table styles */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+table, th, td {
+    border: 1px solid #013220; /* Dark green border for table */
+}
+
+th, td {
+    padding: 10px;
+    text-align: left;
+}
+
+th {
+    background-color: #a9ba9d; /* Light olive green background for table headers */
+    color: #013220; /* Dark green text for table headers */
+}
+
+td {
+    background-color: #eaf2e3; /* Light green background for table cells */
+}

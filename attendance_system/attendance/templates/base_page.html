@@ -1,0 +1,55 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+        }
+        table {
+            margin: 0 auto;
+            border-collapse: collapse;
+            width: 50%;
+        }
+        td {
+            padding: 15px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        a {
+            text-decoration: none;
+            color: #007bff;
+            font-weight: bold;
+        }
+        a:hover {
+            color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to the Attendance System</h1>
+        <table>
+            <tr>
+                <td><a href="{% url 'student_login' %}">Student Login</a></td>
+            </tr>
+            <tr>
+                <td><a href="{% url 'staff_login' %}">Staff Login</a></td>
+            </tr>
+            <tr>
+                <td><a href="{% url 'admin_login' %}">Admin Login</a></td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

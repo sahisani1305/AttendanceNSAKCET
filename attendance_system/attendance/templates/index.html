@@ -1,0 +1,214 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Attendance System</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <style>
+        table {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            border-collapse: collapse;
+        }
+        td {
+            padding: 10px;
+            border: 1px solid #013220;
+        }
+        select, input[type="text"], input[type="date"] {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #013220;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0a472a;
+        }
+    </style>
+    <script>
+        function fetchSections(className) {
+            fetch(`/get_sections/${className}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const sectionSelect = document.getElementById('section');
+                    sectionSelect.innerHTML = '';
+                    data.sections.forEach(section => {
+                        const option = document.createElement('option');
+                        option.value = section;
+                        option.textContent = section;
+                        sectionSelect.appendChild(option);
+                    });
+                });
+        }
+
+        function updateSemesters() {
+            const year = document.getElementById('year').value;
+            const semesterSelect = document.getElementById('semester');
+            semesterSelect.innerHTML = '';
+
+            if (year) {
+                const semesters = year == 1 ? [1, 2] : year == 2 ? [3, 4] : year == 3 ? [5, 6] : [7, 8];
+                semesters.forEach(semester => {
+                    const option = document.createElement('option');
+                    option.value = semester;
+                    option.textContent = `Semester ${semester}`;
+                    semesterSelect.appendChild(option);
+                });
+            }
+        }
+
+        function fetchSubjects() {
+            const className = document.getElementById('class').value;
+            const semester = document.getElementById('semester').value;
+            const year = document.getElementById('year').value;
+
+            if (className && semester && year) {
+                fetch(`/get_subjects/${className}/${year}/${semester}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const subjectSelect = document.getElementById('subject');
+                        subjectSelect.innerHTML = '';
+                        data.subjects.forEach(subject => {
+                            const option = document.createElement('option');
+                            option.value = subject;
+                            option.textContent = subject;
+                            subjectSelect.appendChild(option);
+                        });
+                    });
+            }
+        }
+
+        function validateForm() {
+            var year = document.getElementById('year').value;
+            var semester = document.getElementById('semester').value;
+            var className = document.getElementById('class').value;
+            var section = document.getElementById('section').value;
+            var periods = document.querySelectorAll('input[name="periods"]:checked');
+            var date = document.getElementById('date').value;
+            var subject = document.getElementById('subject').value;
+
+            if (!year) {
+                alert("Year is required!");
+                return false;
+            }
+            if (!semester) {
+                alert("Semester is required!");
+                return false;
+            }
+            if (!className) {
+                alert("Class is required!");
+                return false;
+            }
+            if (!section) {
+                alert("Section is required!");
+                return false;
+            }
+            if (periods.length === 0) {
+                alert("Please select at least one period!");
+                return false;
+            }
+            if (!date) {
+                alert("Date is required!");
+                return false;
+            }
+            if (!subject) {
+                alert("Subject is required!");
+                return false;
+            }
+            return true;
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Select Year, Semester, Class, Section, Period, Date, and Subject</h1>
+        <form id="attendanceForm" action="{% url 'attendance' %}" method="post" onsubmit="return validateForm()">
+            {% csrf_token %}
+            <table>
+                <tr>
+                    <td><label for="year">Select Year:</label></td>
+                    <td>
+                        <select name="year" id="year" onchange="updateSemesters(); fetchSubjects();" required>
+                            <option value="">--Select Year--</option>
+                            <option value="1">Year 1</option>
+                            <option value="2">Year 2</option>
+                            <option value="3">Year 3</option>
+                            <option value="4">Year 4</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td><label for="semester">Select Semester:</label></td>
+                    <td>
+                        <select name="semester" id="semester" onchange="fetchSubjects();" required>
+                            <option value="">--Select Semester--</option>
+                            <!-- Semesters will be populated based on the selected year -->
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td><label for="class">Select Class:</label></td>
+                    <td>
+                        <select name="class" id="class" onchange="fetchSections(this.value); fetchSubjects();" required>
+                            <option value="">--Select Class--</option>
+                            {% for class in classes %}
+                                <option value="{{ class }}">{{ class }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td><label for="section">Select Section:</label></td>
+                    <td>
+                        <select name="section" id="section" required>
+                            <option value="">--Select Section--</option>
+                            <!-- Sections will be populated dynamically based on the selected class -->
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td><label for="period">Select Period:</label></td>
+                    <td>
+                        <div id="periods_checkboxes">
+                            {% for period in periods %}
+                                <div>
+                                    <input type="checkbox" id="period_{{ period.period }}" name="periods" value="{{ period.period }}">
+                                    <label for="period_{{ period.period }}">{{ period.period }} ({{ period.start_time }} - {{ period.end_time }})</label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td><label for="date">Select Date:</label></td>
+                    <td>
+                        <input type="date" id="date" name="date" required>
+                    </td>
+                </tr>
+                <tr>
+                    <td><label for="subject">Select Subject:</label></td>
+                    <td>
+                        <select name="subject" id="subject" required>
+                            <option value="">--Select Subject--</option>
+                            <!-- Subjects will be populated dynamically based on the selected class, semester, and year -->
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="text-align: center;">
+                        <button type="submit">Submit</button>
+                    </td>
+                </tr>
+            </table>
+        </form>
+        <a href="{% url 'home' %}">Back to Home</a>
+    </div>
+</body>
+</html>
