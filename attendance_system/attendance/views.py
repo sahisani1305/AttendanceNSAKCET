@@ -347,31 +347,66 @@ def student_home(request):
     end_date = request.GET.get('end_date')
 
     # Build the query based on the date range
-    query = {'present_students': roll_number}
+    query = {}
     if start_date and end_date:
         start_date = datetime.strptime(start_date, '%Y-%m-%d')
         end_date = datetime.strptime(end_date, '%Y-%m-%d')
         query['date'] = {'$gte': start_date.strftime('%Y-%m-%d'), '$lte': end_date.strftime('%Y-%m-%d')}
 
-    attendance_records = db.attendance.find(query).sort([('date', 1), ('period', 1)])
-    
-    # Group records by subject
-    grouped_records = {}
-    for record in attendance_records:
+    # Fetch all attendance records for the given date range
+    all_records = list(db.attendance.find(query).sort([('date', 1)]))
+
+    # First pass: Calculate total sessions per subject and date
+    subject_total_sessions = defaultdict(lambda: defaultdict(int))
+    subject_attended_sessions = defaultdict(lambda: defaultdict(int))
+    attendance_summary = {}
+
+    # Iterate through all records to count total sessions
+    for record in all_records:
+        date = record['date']
         subject = record['subject']
-        if subject not in grouped_records:
-            grouped_records[subject] = []
-        grouped_records[subject].append({
-            'date': record['date'],
-            'period': record['period'],
-            'status': 'Present' if roll_number in record['present_students'] else 'Absent',
-            'staff_name': record.get('staff_name', 'Unknown')  # Add staff name to the record
-        })
-    
+        
+        # Count total sessions for each subject and date
+        subject_total_sessions[subject][date] += 1
+
+    # Now fetch student's specific attendance records
+    student_query = dict(query, present_students=roll_number)
+    student_records = list(db.attendance.find(student_query).sort([('date', 1)]))
+
+    # Process student's attendance
+    for record in student_records:
+        date = record['date']
+        subject = record['subject']
+        
+        # Initialize subject entry if not present
+        if subject not in attendance_summary:
+            attendance_summary[subject] = {}
+
+        # Initialize date entry if not present
+        if date not in attendance_summary[subject]:
+            attendance_summary[subject][date] = {
+                'classes_attended': 0,
+                'total_classes': subject_total_sessions[subject][date]
+            }
+        
+        # Increment the count of classes attended
+        attendance_summary[subject][date]['classes_attended'] += 1
+        subject_attended_sessions[subject][date] += 1
+
+    # Calculate attendance percentages
+    attendance_percentages = {}
+    for subject in subject_total_sessions:
+        total_sessions = sum(subject_total_sessions[subject].values())
+        attended_sessions = sum(subject_attended_sessions[subject].values())
+        attendance_percentages[subject] = (attended_sessions / total_sessions * 100) if total_sessions > 0 else 0
+
     return render(request, 'student_home.html', {
-        'grouped_records': grouped_records,
+        'attendance_summary': attendance_summary,
         'start_date': start_date,
-        'end_date': end_date
+        'end_date': end_date,
+        'total_sessions': {subject: sum(dates.values()) for subject, dates in subject_total_sessions.items()},
+        'total_sessions_attended': {subject: sum(dates.values()) for subject, dates in subject_attended_sessions.items()},
+        'attendance_percentages': attendance_percentages
     })
 
 @login_required
