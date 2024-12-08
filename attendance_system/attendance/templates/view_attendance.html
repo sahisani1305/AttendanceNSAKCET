@@ -228,15 +228,17 @@
             {% for roll_number in all_students %}
                 <tr>
                     <td>{{ roll_number }}</td>
-                    {% for record in records_group %}
-                        {% if record.roll_number == roll_number %}
-                            <td>{{ record.periods_attended }}</td>
-                        {% else %}
-                            {% if loop.first %}
-                                <td>0</td>  {# Only show 0 for the first record if no match is found #}
+                        {% for record in records_group %}
+                            {% if record.roll_number == roll_number %}
+                                <td {% if record.periods_attended == 0 %}style="background-color: #e94545;"{% endif %}>
+                                    {{ record.periods_attended }}
+                                </td>
+                            {% else %}
+                                {% if loop.first %}
+                                    <td style="background-color: #e94545;">0</td>
+                                {% endif %}
                             {% endif %}
-                        {% endif %}
-                    {% endfor %}
+                        {% endfor %}
 
                     <td>
                         {% with max_record=records_group|max_record:roll_number %}
@@ -262,7 +264,7 @@
         </tbody>
     </table>
     {% endfor %}
-</div>        <a href="{% url 'home' %}">Back to Home</a>
+</div>
     </div>
 </body>
 </html>

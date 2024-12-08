@@ -9,6 +9,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User, Group
 from .forms import StudentRegistrationForm
 from .forms import StaffRegistrationForm
+import logging
+
+# Configure logger
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 
@@ -81,8 +86,22 @@ def register_student(request):
             class_name = form.cleaned_data['class_name']
             section = form.cleaned_data.get('section', 'Nil')
 
-            # Check if student already exists in MongoDB
-            if not db.students.find_one({'roll_number': roll_number, 'name': name, 'class': class_name, 'section': section}):
+            try:
+                # Check if student already exists in MongoDB
+                existing_student = db.students.find_one({
+                    'roll_number': roll_number
+                })
+                
+                if existing_student:
+                    messages.warning(request, f'Student with Roll Number {roll_number} already exists.')
+                    return render(request, 'register_student.html', {'form': form})
+
+                # Check if user already exists
+                existing_user = User.objects.filter(username=roll_number).first()
+                if existing_user:
+                    messages.warning(request, f'User with Roll Number {roll_number} already exists.')
+                    return render(request, 'register_student.html', {'form': form})
+
                 # Add student to MongoDB
                 db.students.insert_one({
                     'roll_number': roll_number,
@@ -90,26 +109,41 @@ def register_student(request):
                     'class': class_name,
                     'year': year,
                     'semester': semester,
-                    'section': section
+                    'section': section,
+                    'registration_date': datetime.now()
                 })
 
                 # Create Django user
-                if not User.objects.filter(username=roll_number).exists():
-                    user = User.objects.create_user(username=roll_number, password=roll_number)
-                    user.first_name = name.split()[0]
-                    user.last_name = ' '.join(name.split()[1:])
-                    user.save()
+                user = User.objects.create_user(
+                    username=roll_number, 
+                    password=roll_number  # Using roll number as default password
+                )
+                user.first_name = name.split()[0]
+                user.last_name = ' '.join(name.split()[1:]) if len(name.split()) > 1 else ''
+                user.save()
 
-                    # Add user to Students group
-                    students_group, created = Group.objects.get_or_create(name='Students')
-                    user.groups.add(students_group)
+                # Add user to Students group
+                students_group, created = Group.objects.get_or_create(name='Students')
+                user.groups.add(students_group)
 
-                    messages.success(request, f'Student {name} registered successfully!')
-                else:
-                    messages.warning(request, f'User already exists for roll number: {roll_number}')
-            else:
-                messages.warning(request, 'Student already exists in the database.')
-            return redirect('register_student')
+                # Success message
+                messages.success(
+                    request, 
+                    f'Student {name} registered successfully! '
+                    f'Roll Number: {roll_number}'
+                )
+
+                return redirect('register_student')
+
+            except Exception as e:
+                # Catch any unexpected errors
+                messages.error(
+                    request, 
+                    f'An unexpected error occurred: {str(e)}. '
+                    'Please contact the system administrator.'
+                )
+                return render(request, 'register_student.html', {'form': form})
+
     else:
         form = StudentRegistrationForm()
 
@@ -123,32 +157,59 @@ def register_staff(request):
             staff_id = form.cleaned_data['staff_id']
             name = form.cleaned_data['name']
 
-            # Check if staff member already exists in MongoDB
-            if not db.staff.find_one({'staff_id': staff_id, 'name': name}):
+            try:
+                # Check if staff member already exists in MongoDB
+                existing_staff = db.staff.find_one({'staff_id': staff_id})
+                
+                if existing_staff:
+                    messages.warning(request, f'Staff member with ID {staff_id} already exists.')
+                    return render(request, 'register_staff.html', {'form': form})
+
+                # Check if user already exists
+                existing_user = User.objects.filter(username=staff_id).first()
+                if existing_user:
+                    messages.warning(request, f'User with staff ID {staff_id} already exists.')
+                    return render(request, 'register_staff.html', {'form': form})
+
                 # Add staff member to MongoDB
                 db.staff.insert_one({
                     'staff_id': staff_id,
                     'name': name,
+                    'registration_date': datetime.now()
                 })
 
                 # Create Django user
-                if not User.objects.filter(username=staff_id).exists():
-                    user = User.objects.create_user(username=staff_id, password=staff_id)
-                    user.first_name = name.split()[0]
-                    user.last_name = ' '.join(name.split()[1:])
-                    user.is_staff = True
-                    user.save()
+                user = User.objects.create_user(
+                    username=staff_id, 
+                    password=staff_id  # Using staff_id as default password
+                )
+                user.first_name = name.split()[0]
+                user.last_name = ' '.join(name.split()[1:]) if len(name.split()) > 1 else ''
+                user.is_staff = True
+                user.save()
 
-                    # Add user to Staff group
-                    staff_group, created = Group.objects.get_or_create(name='Staff')
-                    user.groups.add(staff_group)
+                # Add user to Staff group
+                staff_group, created = Group.objects.get_or_create(name='Staff')
+                user.groups.add(staff_group)
 
-                    messages.success(request, f'Staff member {name} registered successfully!')
-                else:
-                    messages.warning(request, f'User already exists for staff ID: {staff_id}')
-            else:
-                messages.warning(request, 'Staff member already exists in the database.')
-            return redirect('register_staff')
+                # Success message
+                messages.success(
+                    request, 
+                    f'Staff member {name} registered successfully! '
+                    f'Staff ID: {staff_id}'
+                )
+
+                return redirect('register_staff')
+
+            except Exception as e:
+                # Catch any unexpected errors
+                messages.error(
+                    request, 
+                    f'An unexpected error occurred: {str(e)}. '
+                    'Please contact the system administrator.'
+                )
+                return render(request, 'register_staff.html', {'form': form})
+
     else:
         form = StaffRegistrationForm()
 
@@ -411,6 +472,20 @@ def view_attendance(request, year, semester, class_name, section):
                 students_attendance[roll_number].append(absent_record)
 
     # Calculate total attended periods and attendance percentage
+    # Initialize a dictionary to keep track of total attended periods irrespective of date range
+    total_attended_periods = defaultdict(lambda: defaultdict(int))
+
+    # Calculate total attended periods irrespective of date range
+    for record in attendance_records:
+        staff_name = record.get('staff_name', 'Nil')
+        date = record['date']
+        subject = record['subject']
+        record_present_students = set(str(roll) for roll in record.get('present_students', []))
+
+        for roll_number in record_present_students:
+            total_attended_periods[roll_number][subject] += 1  # Increment total attended periods
+
+    # Now process attendance records for the date range
     subject_total_attended_periods = {}
     for roll_number, records in students_attendance.items():
         if roll_number not in subject_total_attended_periods:
@@ -424,10 +499,9 @@ def view_attendance(request, year, semester, class_name, section):
             periods_attended = record.get('periods_attended', 0)
             subject_total_attended_periods[roll_number][subject] += periods_attended
             
-            record['total_attended_subject_periods'] = subject_total_attended_periods[roll_number][subject]
+            record['total_attended_subject_periods'] = total_attended_periods[roll_number][subject]  # Use the global count
             total_subject_periods = subject_total_periods[subject]
             record['attendance_percentage'] = (record['total_attended_subject_periods'] / total_subject_periods * 100) if total_subject_periods > 0 else 0
-
     # Ensure no duplicate attendance status for a student on the same day and subject
     for roll_number, records in students_attendance.items():
         dates_subjects = set((r['date'], r['subject']) for r in records)
