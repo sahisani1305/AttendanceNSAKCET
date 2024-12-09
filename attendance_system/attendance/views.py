@@ -843,3 +843,165 @@ def get_subjects(request, class_name, year, semester):
     
 def attendance_home(request):
     return render(request, 'home.html')
+
+def view_summary(request, year, semester, class_name, section):
+    classes = db.students.distinct('class')
+    attendance_records = []
+
+    # Fetch all students in the class and section, sorted by roll number
+    all_students = list(db.students.find({
+        'class': class_name, 
+        'section': section
+    }, {'roll_number': 1, '_id': 0}).sort('roll_number', 1))
+
+    # Modify roll number sorting to ensure consistent type
+    def roll_number_key(student):
+        return str(student['roll_number'])
+
+    all_students.sort(key=roll_number_key)
+    all_roll_numbers = {str(student['roll_number']) for student in all_students}
+
+    # Fetch attendance records based on class, semester, year, and section
+    if class_name and semester and year and section:
+        attendance_records = list(db.attendance.find({
+            'class': class_name,
+            'semester': semester,
+            'year': year,
+            'section': section
+        }))
+
+    if not attendance_records:
+        messages.info(request, 'No attendance records found for the selected class, semester, and year.')
+
+    # Group attendance records by roll number and calculate attendance percentage
+    subject_total_periods = defaultdict(int)
+    total_attended_periods = defaultdict(lambda: defaultdict(int))
+
+    # First pass: Calculate total periods per subject
+    for record in attendance_records:
+        subject = record['subject']
+        subject_total_periods[subject] += 1
+
+        # Track attendance for present students
+        record_present_students = set(str(roll) for roll in record.get('present_students', []))
+        for roll_number in record_present_students:
+            total_attended_periods[roll_number][subject] += 1  # Increment total attended periods
+
+    # Prepare summary data
+    attendance_summary = {}
+    unique_subjects = list(subject_total_periods.keys())  # Get all unique subjects
+
+    for roll_number in all_roll_numbers:
+        attendance_summary[roll_number] = {
+            'total_attended': 0,
+            'attendance_percentage': 0.0,
+        }
+        for subject in unique_subjects:
+            attended_count = total_attended_periods[roll_number].get(subject, 0)
+            attendance_summary[roll_number][subject] = attended_count  # Store sessions attended for each subject
+            attendance_summary[roll_number]['total_attended'] += attended_count
+
+        # Calculate total classes conducted
+        total_classes_conducted = sum(subject_total_periods.values())
+
+        # Calculate attendance percentage
+        if total_classes_conducted > 0:
+            attendance_summary[roll_number]['attendance_percentage'] = (
+                (attendance_summary[roll_number]['total_attended'] / total_classes_conducted) * 100
+            )
+
+    # Sort the summary by roll number
+    sorted_attendance_summary = dict(sorted(attendance_summary.items()))
+
+    return render(request, 'view_summary.html', {
+        'attendance_summary': sorted_attendance_summary,
+        'class_name': class_name,
+        'semester': semester,
+        'year': year,
+        'section': section,
+        'classes': classes,
+        'all_students': [str(student['roll_number']) for student in all_students],
+        'unique_subjects': unique_subjects,  # Pass unique subjects to the template
+        'total_classes_conducted': total_classes_conducted,  # Pass total classes conducted to the template
+    })
+
+def admin_view_summary(request, year, semester, class_name, section):
+    classes = db.students.distinct('class')
+    attendance_records = []
+
+    # Fetch all students in the class and section, sorted by roll number
+    all_students = list(db.students.find({
+        'class': class_name, 
+        'section': section
+    }, {'roll_number': 1, '_id': 0}).sort('roll_number', 1))
+
+    # Modify roll number sorting to ensure consistent type
+    def roll_number_key(student):
+        return str(student['roll_number'])
+
+    all_students.sort(key=roll_number_key)
+    all_roll_numbers = {str(student['roll_number']) for student in all_students}
+
+    # Fetch attendance records based on class, semester, year, and section
+    if class_name and semester and year and section:
+        attendance_records = list(db.attendance.find({
+            'class': class_name,
+            'semester': semester,
+            'year': year,
+            'section': section
+        }))
+
+    if not attendance_records:
+        messages.info(request, 'No attendance records found for the selected class, semester, and year.')
+
+    # Group attendance records by roll number and calculate attendance percentage
+    subject_total_periods = defaultdict(int)
+    total_attended_periods = defaultdict(lambda: defaultdict(int))
+
+    # First pass: Calculate total periods per subject
+    for record in attendance_records:
+        subject = record['subject']
+        subject_total_periods[subject] += 1
+
+        # Track attendance for present students
+        record_present_students = set(str(roll) for roll in record.get('present_students', []))
+        for roll_number in record_present_students:
+            total_attended_periods[roll_number][subject] += 1  # Increment total attended periods
+
+    # Prepare summary data
+    attendance_summary = {}
+    unique_subjects = list(subject_total_periods.keys())  # Get all unique subjects
+
+    for roll_number in all_roll_numbers:
+        attendance_summary[roll_number] = {
+            'total_attended': 0,
+            'attendance_percentage': 0.0,
+        }
+        for subject in unique_subjects:
+            attended_count = total_attended_periods[roll_number].get(subject, 0)
+            attendance_summary[roll_number][subject] = attended_count  # Store sessions attended for each subject
+            attendance_summary[roll_number]['total_attended'] += attended_count
+
+        # Calculate total classes conducted
+        total_classes_conducted = sum(subject_total_periods.values())
+
+        # Calculate attendance percentage
+        if total_classes_conducted > 0:
+            attendance_summary[roll_number]['attendance_percentage'] = (
+                (attendance_summary[roll_number]['total_attended'] / total_classes_conducted) * 100
+            )
+
+    # Sort the summary by roll number
+    sorted_attendance_summary = dict(sorted(attendance_summary.items()))
+
+    return render(request, 'admin_view_summary.html', {
+        'attendance_summary': sorted_attendance_summary,
+        'class_name': class_name,
+        'semester': semester,
+        'year': year,
+        'section': section,
+        'classes': classes,
+        'all_students': [str(student['roll_number']) for student in all_students],
+        'unique_subjects': unique_subjects,  # Pass unique subjects to the template
+        'total_classes_conducted': total_classes_conducted,  # Pass total classes conducted to the template
+    })

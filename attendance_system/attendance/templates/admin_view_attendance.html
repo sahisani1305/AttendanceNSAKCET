@@ -230,12 +230,12 @@
                     <td>{{ roll_number }}</td>
                         {% for record in records_group %}
                             {% if record.roll_number == roll_number %}
-                                <td {% if record.periods_attended == 0 %}style="background-color: #e94545;"{% endif %}>
+                                <td {% if record.periods_attended == 0 %}style="background-color: lightcoral;"{% endif %}>
                                     {{ record.periods_attended }}
                                 </td>
                             {% else %}
                                 {% if loop.first %}
-                                    <td style="background-color: #e94545;">0</td>
+                                    <td style="background-color: lightcoral;">0</td>
                                 {% endif %}
                             {% endif %}
                         {% endfor %}

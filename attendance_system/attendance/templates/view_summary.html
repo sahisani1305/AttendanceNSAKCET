@@ -6,7 +6,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>View Attendance</title>
+    <title>View Summary</title>
     <link rel="stylesheet" href="{% static 'style.css' %}">
     <style>
         body {
@@ -20,7 +20,7 @@
             margin-top: 20px;
             background-color: #ffffff; /* White background */
         }
-        h1, h2, h3 {
+        h1, h2 {
             color: #013220; /* Dark green text */
             text-align: center;
         }
@@ -49,7 +49,7 @@
         td {
             background-color: #eaf2e3; /* Light green background for table cells */
         }
-        select, input[type="text"], input[type="date"] {
+        select, input[type="text"] {
             width: 100%;
             padding: 8px;
             box-sizing: border-box;
@@ -67,6 +67,20 @@
         }
     </style>
     <script>
+        function fetchSections(className) {
+            fetch(`/get_sections/${className}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const sectionSelect = document.getElementById('section');
+                    sectionSelect.innerHTML = '';
+                    data.sections.forEach(section => {
+                        const option = document.createElement('option');
+                        option.value = section;
+                        option.textContent = section;
+                        sectionSelect.appendChild(option);
+                    });
+                });
+        }
         function updateSemesters() {
             const year = document.getElementById('year').value;
             const semesterSelect = document.getElementById('semester');
@@ -83,30 +97,13 @@
             }
         }
 
-        function fetchSections(className) {
-            fetch(`/get_sections/${className}/`)
-                .then(response => response.json())
-                .then(data => {
-                    const sectionSelect = document.getElementById('section');
-                    sectionSelect.innerHTML = '';
-                    data.sections.forEach(section => {
-                        const option = document.createElement('option');
-                        option.value = section;
-                        option.textContent = section;
-                        sectionSelect.appendChild(option);
-                    });
-                });
-        }
-
         function submitForm() {
             // Get selected values
             var year = document.getElementById('year').value;
             var semester = document.getElementById('semester').value;
             var className = document.getElementById('class_name').value;
             var section = document.getElementById('section').value;
-            var startDate = document.getElementById('start_date').value;
-            var endDate = document.getElementById('end_date').value;
-        
+
             // Check if all fields are selected
             if (!year) {
                 alert("Year is required.");
@@ -124,18 +121,10 @@
                 alert("Section is required.");
                 return;
             }
-        
+
             // Construct the URL dynamically
-            var url = `/view_attendance/${year}/${semester}/${className}/${section}/`;
-        
-            // Append date parameters only if they are provided
-            if (startDate) {
-                url += `?start_date=${startDate}`;
-            }
-            if (endDate) {
-                url += startDate ? `&end_date=${endDate}` : `?end_date=${endDate}`;
-            }
-        
+            var url = `/view_summary/${year}/${semester}/${className}/${section}/`;
+
             // Redirect to the URL
             window.location.href = url;
         }
@@ -143,10 +132,10 @@
 </head>
 <body>
     <div class="container">
-        <h1>View Attendance</h1>
-
+        <h1>View Summary</h1>
+    
         <!-- Form to select Year, Semester, Class, and Section -->
-        <form id="attendanceForm" method="get" onsubmit="event.preventDefault(); submitForm();">
+        <form id="summaryForm" method="get" onSubmit="event.preventDefault(); submitForm();">
             {% csrf_token %}
             <table>
                 <tr>
@@ -191,14 +180,6 @@
                     </td>
                 </tr>
                 <tr>
-                    <td><label for="start_date">Start Date:</label></td>
-                    <td><input type="date" id="start_date" name="start_date"></td>
-                </tr>
-                <tr>
-                    <td><label for="end_date">End Date:</label></td>
-                    <td><input type="date" id="end_date" name="end_date"></td>
-                </tr>
-                <tr>
                     <td colspan="2" style="text-align: center;">
                         <button type="submit">Submit</button>
                     </td>
@@ -206,65 +187,46 @@
             </table>
         </form>
         <a href="{% url 'home' %}">Back to Home</a>
-<!-- Attendance Records -->
-<div id="attendance_records">
-    <h2>Attendance Records</h2>
-    {% for subject, records_group in filtered_attendance.items %}
-    <h3>Subject: {{ subject }} (Overall Sessions: {{ records_group.0.overall_periods }})</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Roll Number</th>
-                {% for record in records_group %}
-                    {% if record.roll_number == all_students.0 %}
-                        <th>{{ record.date }}</th>  {# Only show the dates for the first roll number #}
-                    {% endif %}
-                {% endfor %}
-                <th>Total Classes Attended</th>  {# New column for total classes attended #}
-                <th>Attendance Percentage</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for roll_number in all_students %}
-                <tr>
-                    <td>{{ roll_number }}</td>
-                        {% for record in records_group %}
-                            {% if record.roll_number == roll_number %}
-                                <td {% if record.periods_attended == 0 %}style="background-color: lightcoral;"{% endif %}>
-                                    {{ record.periods_attended }}
-                                </td>
-                            {% else %}
-                                {% if loop.first %}
-                                    <td style="background-color: lightcoral;">0</td>
-                                {% endif %}
-                            {% endif %}
+        
+        <!-- Summary Records -->
+        <div id="summary_records">
+            <h2>Attendance Summary</h2>
+            <table>
+                <thead>
+                    <div id="total_classes_conducted" style="text-align: right; margin-top: 8px;">
+                        <th>Total Sessions Conducted: {{ total_classes_conducted }}</th>
+                    </div>
+                    <tr>
+                        <th>Roll Number</th>
+                        {% for subject in unique_subjects %}
+                            <th>{{ subject }}</th>
                         {% endfor %}
-
-                    <td>
-                        {% with max_record=records_group|max_record:roll_number %}
-                            {% if max_record %}
-                                {{ max_record.total_attended_subject_periods }}
-                            {% else %}
-                                N/A
-                            {% endif %}
-                        {% endwith %}
-                    </td>
-                    <td>
-                        {% with max_record=records_group|max_record:roll_number %}
-                            {% if max_record %}
-                                {{ max_record.attendance_percentage|floatformat:2 }}%
-                            {% else %}
-                                N/A
-                            {% endif %}
-                        {% endwith %}
-                    </td>
-                    
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% endfor %}
-</div>
+                        <th>Total Sessions Attended</th>
+                        <th>Attendance Percentage</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for roll_number, summary in attendance_summary.items %}
+                    <tr>
+                        <td>{{ roll_number }}</td>
+                        {% for subject in unique_subjects %}
+                            <td>
+                                {% if summary|get_item:subject %}
+                                    {{ summary|get_item:subject }}
+                                {% else %}
+                                    0
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                        <td>{{ summary.total_attended }}</td>
+                        <td {% if summary.attendance_percentage < 75 %}style="background-color: lightcoral;"{% endif %}>
+                            {{ summary.attendance_percentage|floatformat:2 }}%
+                        </td>                    
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </body>
 </html>

@@ -21,5 +21,7 @@ urlpatterns = [
     path('get_subjects/<str:class_name>/<int:year>/<int:semester>/', views.get_subjects, name='get_subjects'),
     path('logout/', LogoutView.as_view(next_page='base_page'), name='logout'),
     path('admin_view_attendance/<int:year>/<int:semester>/<str:class_name>/<str:section>/', views.admin_view_attendance, name='admin_view_attendance'),
-    
+    path('view_summary/<int:year>/<int:semester>/<str:class_name>/<str:section>/', views.view_summary, name='view_summary'),
+    path('admin_view_summary/<int:year>/<int:semester>/<str:class_name>/<str:section>/', views.admin_view_summary, name='admin_view_summary'),
+
 ]
