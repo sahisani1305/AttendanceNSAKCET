@@ -342,9 +342,41 @@ def mark_attendance(request):
 
 @login_required
 def student_home(request):
-    roll_number = request.user.username
+    roll_number = request.user.username.strip()  # Ensure roll number is stripped of whitespace
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
+
+    # Debugging: Print the roll number
+    print(f"Roll Number: {roll_number}")
+
+    # Fetch the student's information from the database
+    student_info = db.students.find_one({'roll_number': int(roll_number)})
+    
+    if student_info:
+        # Extract relevant student information
+        student_name = student_info.get('name')
+        student_class = student_info.get('class')
+        student_year = student_info.get('year')
+        student_section = student_info.get('section')
+        student_semester = student_info.get('semester')
+        
+        # Debugging: Print student information
+        print(f"Student Info: {student_name}, {student_class}, {student_section}, {student_year}, {student_semester}")
+
+        # Fetch subjects based on the student's class, section, year, and semester
+        subjects = list(db.subjects.find({
+            'class': student_class,
+            'year': student_year,
+            'semester': student_semester
+        }))
+
+        # Debugging: Print the subjects found
+        print(f"Subjects for {student_name} ({student_class}, {student_section}, {student_year}, {student_semester}): {subjects}")
+
+    else:
+        print(f"No student found with Roll Number: {roll_number}")
+        messages.error(request, 'Student not found.')
+        return render(request, 'student_home.html', {})
 
     # Build the query based on the date range
     query = {}
@@ -392,21 +424,52 @@ def student_home(request):
         # Increment the count of classes attended
         attendance_summary[subject][date]['classes_attended'] += 1
         subject_attended_sessions[subject][date] += 1
-
     # Calculate attendance percentages
     attendance_percentages = {}
-    for subject in subject_total_sessions:
-        total_sessions = sum(subject_total_sessions[subject].values())
-        attended_sessions = sum(subject_attended_sessions[subject].values())
-        attendance_percentages[subject] = (attended_sessions / total_sessions * 100) if total_sessions > 0 else 0
+    overall_total_sessions = 0
+    overall_attended_sessions = 0
 
+    # Create a set of subject names for quick lookup
+    subject_names = set()
+    for subject in subjects:
+        # Assuming 'subjects' is a list of subject names
+        for name in subject['subjects']:  # Adjust this if the field name is different
+            subject_names.add(name)
+
+    # Filter subjects to calculate overall attendance percentage
+    for subject_name in subject_names:
+        if subject_name in subject_total_sessions:
+            total_sessions = sum(subject_total_sessions[subject_name].values())
+            attended_sessions = sum(subject_attended_sessions[subject_name].values())
+            
+            # Calculate individual subject attendance percentage
+            attendance_percentages[subject_name] = (attended_sessions / total_sessions * 100) if total_sessions > 0 else 0
+            
+            # Debugging: Print individual subject attendance details
+            print(f"Subject: {subject_name}")
+            print(f"  Total Sessions: {total_sessions}")
+            print(f"  Attended Sessions: {attended_sessions}")
+            print(f"  Attendance Percentage: {attendance_percentages[subject_name]:.2f}%")
+
+            # Update overall totals
+            overall_total_sessions += total_sessions
+            overall_attended_sessions += attended_sessions
+
+    # Calculate overall attendance percentage
+    overall_attendance_percentage = (overall_attended_sessions / overall_total_sessions * 100) if overall_total_sessions > 0 else 0
+
+    # Debugging: Print overall attendance details
+    print(f"Overall Total Sessions: {overall_total_sessions}")
+    print(f"Overall Attended Sessions: {overall_attended_sessions}")
+    print(f"Overall Attendance Percentage: {overall_attendance_percentage:.2f}%")
     return render(request, 'student_home.html', {
         'attendance_summary': attendance_summary,
         'start_date': start_date,
         'end_date': end_date,
         'total_sessions': {subject: sum(dates.values()) for subject, dates in subject_total_sessions.items()},
         'total_sessions_attended': {subject: sum(dates.values()) for subject, dates in subject_attended_sessions.items()},
-        'attendance_percentages': attendance_percentages
+        'attendance_percentages': attendance_percentages,
+        'overall_attendance_percentage': overall_attendance_percentage,
     })
 
 @login_required
