@@ -41,7 +41,6 @@
         <h1>Welcome to the Attendance System, {{ request.user.first_name }} {{ request.user.last_name }}</h1>
         <a href="{% url 'index' %}" class="button">Mark Attendance</a>
         <a href="{% url 'view_attendance' year=2 semester=3 class_name='CSE(IOT)' section='Nil' %}" class="button">Show Attendance</a>
-        <a href="{% url 'Percentage Summary' %}" class="button">Percentage Summary</a>
         <a href="{% url 'logout' %}" class="button">Logout</a>
     </div>
 </body>
