@@ -30,6 +30,7 @@
         <h1>Welcome to Admin Home</h1>
         <a href="{% url 'register_student' %}" class="button">Student Registration</a>
         <a href="{% url 'register_staff' %}" class="button">Staff Registration</a>
+        <a href="{% url 'index' %}" class="button">Update Attendance</a>
         <a href="{% url 'admin_view_attendance' year=2 semester=3 class_name='CSE(IOT)' section='Nil' %}" class="button">Get Reports</a>
         <a href="{% url 'admin_view_summary' year=2 semester=3 class_name='CSE(IOT)' section='Nil' %}" class="button">View Summary</a>
         <a href="{% url 'logout' %}" class="button">Logout</a>

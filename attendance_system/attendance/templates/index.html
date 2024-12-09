@@ -31,6 +31,13 @@
         button:hover {
             background-color: #0a472a;
         }
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            text-decoration: none;
+            color: #013220;
+        }
     </style>
     <script>
         function fetchSections(className) {
@@ -208,7 +215,12 @@
                 </tr>
             </table>
         </form>
-        <a href="{% url 'home' %}">Back to Home</a>
+        
+        {% if user.is_superuser %}
+            <a href="{% url 'admin_home' %}" class="back-link">Back to Admin Home</a>
+        {% else %}
+            <a href="{% url 'home' %}" class="back-link">Back to Home</a>
+        {% endif %}
     </div>
 </body>
 </html>

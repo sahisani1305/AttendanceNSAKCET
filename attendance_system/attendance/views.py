@@ -277,6 +277,7 @@ def attendance(request):
 
 @login_required
 def mark_attendance(request):
+    # Check if the request method is POST
     if request.method == 'POST':
         class_name = request.POST['class']
         section = request.POST['section']
@@ -304,12 +305,17 @@ def mark_attendance(request):
             })
 
             if existing_record:
+                # If the user is a staff member, prevent them from editing already marked attendance
+                if not request.user.is_superuser:
+                    messages.error(request, f'Attendance for {class_name} - {section} on {date} for period {period} has already been marked. You cannot edit it.')
+                    return redirect('index')
+
+                # If the user is a superuser, allow them to edit the existing record
                 # Update the existing attendance record with present and absent students
-                # Ensure that if a student is present in any period, they are marked as present
                 updated_present_students = set(existing_record['present_students']).union(set(present_students))
                 updated_absent_students = set(existing_record.get('absent_students', [])).union(set(absent_students))
 
-                # We ensure that a student can't be both present and absent at the same time
+                # Ensure that a student can't be both present and absent at the same time
                 final_absent_students = updated_absent_students - updated_present_students
 
                 db.attendance.update_one(
@@ -335,9 +341,15 @@ def mark_attendance(request):
                     'staff_name': staff_name  # Save the staff name
                 })
 
-        # Show success message
-        messages.success(request, 'Attendance has been marked/updated successfully!')
-        return redirect('view_attendance', year=year, semester=semester, class_name=class_name, section=section)
+        # Determine redirection based on user type
+        if request.user.is_superuser:
+            # Redirect superusers to admin attendance view
+            return redirect('admin_view_attendance', year=year, semester=semester, class_name=class_name, section=section)
+        else:
+            # Redirect regular users to view attendance
+            return redirect('view_attendance', year=year, semester=semester, class_name=class_name, section=section)
+
+    # If not a POST request, redirect to index
     return redirect('index')
 
 @login_required
